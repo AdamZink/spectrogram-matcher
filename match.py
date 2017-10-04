@@ -11,11 +11,11 @@ specHeight = 512  # instead of 513 because top row is deleted
 timeBuckets = int(specWidth)
 frequencyBuckets = int(specHeight)
 
-if (specWidth % timeBuckets != 0):
-	sys.exit('ERROR - specWidth is not evenly divisible by timeBuckets')
+if (timeBuckets == 0 or specWidth % timeBuckets != 0):
+	sys.exit('ERROR - timeBuckets is not valid for specWidth')
 
-if (specHeight % frequencyBuckets != 0):
-	sys.exit('ERROR - specHeight is not evenly divisible by frequencyBuckets')
+if (frequencyBuckets == 0 or specHeight % frequencyBuckets != 0):
+	sys.exit('ERROR - frequencyBuckets is not valid for specHeight')
 	
 timeBucketWidth = int(specWidth / timeBuckets)
 frequencyBucketHeight = int(specHeight / frequencyBuckets)
