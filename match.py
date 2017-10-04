@@ -31,7 +31,7 @@ def getReducedImage(filename, imgWidth, imgHeight, imgSectionWidth, imgSectionHe
 	img = np.delete(imgFull, (0), axis=0)
 	#print(str(img.shape) + ' -> ' + str(img))
 	
-	imgReshape = img.reshape(int(imgHeight / imgSectionHeight), imgSectionHeight, int(imgWidth / imgSectionWidth), imgSectionWidth).sum(axis=3).sum(axis=1)
+	imgReshape = img.reshape(int(imgHeight / imgSectionHeight), imgSectionHeight, int(imgWidth / imgSectionWidth), imgSectionWidth).mean(axis=3).mean(axis=1)
 	#print(str(imgReshape.shape) + ' -> ' + str(imgReshape))
 	
 	return imgReshape
