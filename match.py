@@ -1,6 +1,9 @@
 import os, sys
 import numpy as np
 import cv2
+import scipy.io.wavfile as wf
+import scipy.signal as sig
+import random
 
 # SOX command to generate spectrogram:
 # sox session.wav -n remix 2 rate <soxRate> spectrogram -m -r -X <specWidth> -y <specHeight+1> -z <zAxisDbRange> -o short_song.png
@@ -21,11 +24,13 @@ zMultipleOfTen = 8
 zAxisDbRange = 10 * zMultipleOfTen
 
 
-specWidth = 360
+specWidth = xAxisPixelsPerSecond
 specHeight = yAxisPixels - 1  # will delete top row of data later so height is evenly divisible by 2
 
+specDurationInSeconds = 1.0
 
-timeBuckets = int(specWidth)
+
+timeBuckets = 1 #int(specWidth)
 frequencyBuckets = int(specHeight)
 
 if (timeBuckets == 0 or specWidth % timeBuckets != 0):
@@ -38,7 +43,7 @@ timeBucketWidth = int(specWidth / timeBuckets)
 frequencyBucketHeight = int(specHeight / frequencyBuckets)
 
 
-image_filename = 'light_gray.png'
+image_filename = 'sin_G4_clean.png'
 
 # import spectrogram and format as numpy array
 def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSectionHeight):
@@ -67,5 +72,58 @@ def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSec
 # Get data for 1 image
 image_data = getReducedSpectrogram(os.path.join(os.getcwd(), 'img', 'input', image_filename), specWidth, specHeight, timeBucketWidth, frequencyBucketHeight)
 
-print(str(image_data.shape) + ' -> ' + str(image_data))
+#print(str(image_data.shape) + ' -> ' + str(image_data))
+
+samplesPerSecond = 44100
+
+def getSamples(amplitudeData, amplitudeValuesPerSecond, durationInSeconds, maxFrequency):
+	frequencyBuckets, timeBuckets = amplitudeData.shape
+	
+	frequencySplits = np.linspace(0, maxFrequency, frequencyBuckets + 1)
+	frequencyBucketLowerBounds = frequencySplits[:-1]
+	frequencyBucketUpperBounds = frequencySplits[1:]
+	#print(frequencyBucketLowerBounds)
+	#print(frequencyBucketUpperBounds)
+	
+	frequencyMidpoints = np.flip((frequencyBucketLowerBounds + frequencyBucketUpperBounds) / 2.0, axis=0)
+	#print(frequencyMidpoints)
+	
+	t = np.arange(durationInSeconds * samplesPerSecond)
+	
+	sampleData = np.sin(2.0 * np.pi * t * ((1.0 * 0) / samplesPerSecond))
+
+	amplitudeIndex = 0
+	for frequency in frequencyMidpoints:
+	
+		#randomPhaseShift = random.random() * 10000.0  # better way to do this?
+		
+		# frequencyData = amplitude * sin( frequency * time + phase shift )
+		#frequencyData = amplitudeData[amplitudeIndex][0] * np.sin((2.0 * np.pi * t * ((1.0 * frequency) / samplesPerSecond)) + randomPhaseShift)
+		frequencyData = amplitudeData[amplitudeIndex][0] * np.sin(2.0 * np.pi * t * ((1.0 * frequency) / samplesPerSecond))
+		
+		sampleData = np.add(sampleData, frequencyData)
+		
+		amplitudeIndex += 1
+		
+	return sampleData
+	
+	
+def normalizeForWav(data, maxAmplitude):
+	return np.int16(data / np.max(np.abs(data)) * (maxAmplitude * (32767 - 100)))
+
+
+# Calculate audio samples for image data
+
+samples = getSamples(image_data, specWidth, specDurationInSeconds, maxSpecFrequency)
+
+result = normalizeForWav(samples, 0.25)
+
+print(str(result.shape) + ' -> ' + str(result))
+
+
+wavRelativeDir = 'wav'
+
+filename = os.path.join(wavRelativeDir, 'clean_' + str(timeBuckets) + '_' + str(frequencyBuckets) + '.wav')
+wf.write(filename, samplesPerSecond, result)
+print('Wrote ' + filename)
 
