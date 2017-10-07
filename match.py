@@ -3,7 +3,12 @@ import numpy as np
 import cv2
 
 # SOX command to generate spectrogram:
-# sox session.wav -n remix 2 rate 6k spectrogram -m -r -X <specWidth> -y <specHeight+1> -z <zAxisDbRange> -o short_song.png
+# sox session.wav -n remix 2 rate <soxRate> spectrogram -m -r -X <specWidth> -y <specHeight+1> -z <zAxisDbRange> -o short_song.png
+# Note: only include 'remix 2' option if there are left and right channels
+
+# sox: rate generates spectrogram frequency analysis from 0 Hz to (soxRate / 2) Hz
+soxRate = int(6e3)
+maxSpecFrequency = int(soxRate / 2.0)
 
 # sox: range 1 - 5000
 xAxisPixelsPerSecond = 360
