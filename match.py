@@ -43,7 +43,7 @@ timeBucketWidth = int(specWidth / timeBuckets)
 frequencyBucketHeight = int(specHeight / frequencyBuckets)
 
 
-image_filename = 'sin_G4_clean.png'
+image_filename = 'sin_G4.png'
 
 # import spectrogram and format as numpy array
 def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSectionHeight):
@@ -76,30 +76,54 @@ image_data = getReducedSpectrogram(os.path.join(os.getcwd(), 'img', 'input', ima
 
 samplesPerSecond = 44100
 
+
+def isMusicalFrequencyBucket(lowerFrequency, upperFrequency):
+	fundamentalFrequencies = [
+		261.63,
+		293.66,
+		329.63,
+		349.23,
+		392,
+		440,
+		493.88,
+		523.25
+	]
+	numOvertones = 5
+	musicalFrequencies = fundamentalFrequencies
+	for i in range(0, numOvertones):
+		musicalFrequencies += [x*(i+2) for x in fundamentalFrequencies]
+	
+	return len([f for f in musicalFrequencies if f >= lowerFrequency and f < upperFrequency]) > 0
+	
+
 def getSamples(amplitudeData, amplitudeValuesPerSecond, durationInSeconds, maxFrequency):
 	frequencyBuckets, timeBuckets = amplitudeData.shape
 	
 	frequencySplits = np.linspace(0, maxFrequency, frequencyBuckets + 1)
 	frequencyBucketLowerBounds = frequencySplits[:-1]
 	frequencyBucketUpperBounds = frequencySplits[1:]
-	#print(frequencyBucketLowerBounds)
-	#print(frequencyBucketUpperBounds)
+	frequencyBucketTuples = list(zip(np.flip(frequencyBucketLowerBounds, axis=0), np.flip(frequencyBucketUpperBounds, axis=0)))
 	
-	frequencyMidpoints = np.flip((frequencyBucketLowerBounds + frequencyBucketUpperBounds) / 2.0, axis=0)
-	#print(frequencyMidpoints)
+	#print(frequencyBucketTuples)
 	
 	t = np.arange(durationInSeconds * samplesPerSecond)
 	
 	sampleData = np.sin(2.0 * np.pi * t * ((1.0 * 0) / samplesPerSecond))
 
 	amplitudeIndex = 0
-	for frequency in frequencyMidpoints:
+	for lowerFrequency, upperFrequency in frequencyBucketTuples:
 	
+	
+		amplitude = 0
+		if(isMusicalFrequencyBucket(lowerFrequency, upperFrequency)):
+			amplitude = amplitudeData[amplitudeIndex][0]
 		#randomPhaseShift = random.random() * 10000.0  # better way to do this?
+		
+		midpointFrequency = (lowerFrequency + upperFrequency) / 2.0
 		
 		# frequencyData = amplitude * sin( frequency * time + phase shift )
 		#frequencyData = amplitudeData[amplitudeIndex][0] * np.sin((2.0 * np.pi * t * ((1.0 * frequency) / samplesPerSecond)) + randomPhaseShift)
-		frequencyData = amplitudeData[amplitudeIndex][0] * np.sin(2.0 * np.pi * t * ((1.0 * frequency) / samplesPerSecond))
+		frequencyData = amplitude * np.sin(2.0 * np.pi * t * ((1.0 * midpointFrequency) / samplesPerSecond))
 		
 		sampleData = np.add(sampleData, frequencyData)
 		
