@@ -56,14 +56,14 @@ def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSec
 	
 	# convert decibel values to linear scale
 	# use 0 as linear value if spectrogram is black
-	imgLinear = np.where(imgLog == 0, 0, 10.0 ** ((imgLog - 1.0) * zMultipleOfTen))
+	imgRelativeLoudness = np.where(imgLog == 0, 0, 2.0 ** ((imgLog - 1.0) * zMultipleOfTen))
 	#print(str(imgLinear.shape) + ' -> ' + str(imgLinear))
 	
 	if(imgSectionWidth == 1 and imgSectionHeight == 1):
-		return imgLinear
+		return imgRelativeLoudness
 		
 	else:
-		imgReshape = imgLinear.reshape(int(imgHeight / imgSectionHeight), imgSectionHeight, int(imgWidth / imgSectionWidth), imgSectionWidth).mean(axis=3).mean(axis=1)
+		imgReshape = imgRelativeLoudness.reshape(int(imgHeight / imgSectionHeight), imgSectionHeight, int(imgWidth / imgSectionWidth), imgSectionWidth).mean(axis=3).mean(axis=1)
 		#print(str(imgReshape.shape) + ' -> ' + str(imgReshape))
 
 		return imgReshape
@@ -140,7 +140,7 @@ def normalizeForWav(data, maxAmplitude):
 
 samples = getSamples(image_data, specWidth, specDurationInSeconds, maxSpecFrequency)
 
-result = normalizeForWav(samples, 0.25)
+result = normalizeForWav(samples, 0.1)
 
 print(str(result.shape) + ' -> ' + str(result))
 
