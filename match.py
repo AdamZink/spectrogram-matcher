@@ -4,6 +4,7 @@ import cv2
 import scipy.io.wavfile as wf
 import scipy.signal as sig
 import random
+import subprocess
 
 # SOX command to generate spectrogram:
 # sox session.wav -n remix 2 rate <soxRate> spectrogram -m -r -X <specWidth> -y <specHeight+1> -z <zAxisDbRange> -o short_song.png
@@ -30,6 +31,24 @@ specHeight = yAxisPixels - 1  # will delete top row of data later so height is e
 specDurationInSeconds = 1.0
 
 
+wavRelativeDir = 'wav'
+imgRelativeDir = os.path.join('img', 'compare')
+
+beforeWavFilename = os.path.join(wavRelativeDir, 'sin_G4.wav')
+
+beforeImgFilename = os.path.join(imgRelativeDir, 'before_spectrogram.png')
+afterWavFilename = os.path.join(wavRelativeDir, 'after.wav')
+afterImgFilename = os.path.join(imgRelativeDir, 'after_spectrogram.png')
+
+
+beforeCommand = 'sox ' + beforeWavFilename + ' -n rate ' + str(soxRate) + ' spectrogram -m -r -X ' + str(xAxisPixelsPerSecond) + ' -y ' + str(yAxisPixels) + ' -z ' + str(zAxisDbRange) + ' -o ' + beforeImgFilename
+print(beforeCommand)
+
+subprocess.Popen(beforeCommand, shell=True, stdout=subprocess.PIPE)
+print('Wrote ' + beforeImgFilename)
+
+
+
 timeBuckets = 1 #int(specWidth)
 frequencyBuckets = int(specHeight)
 
@@ -42,8 +61,6 @@ if (frequencyBuckets == 0 or specHeight % frequencyBuckets != 0):
 timeBucketWidth = int(specWidth / timeBuckets)
 frequencyBucketHeight = int(specHeight / frequencyBuckets)
 
-
-image_filename = 'sin_G4.png'
 
 # import spectrogram and format as numpy array
 def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSectionHeight):
@@ -70,7 +87,9 @@ def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSec
 
 
 # Get data for 1 image
-image_data = getReducedSpectrogram(os.path.join(os.getcwd(), 'img', 'input', image_filename), specWidth, specHeight, timeBucketWidth, frequencyBucketHeight)
+#image_data = getReducedSpectrogram(os.path.join(os.getcwd(), 'img', 'input', image_filename), specWidth, specHeight, timeBucketWidth, frequencyBucketHeight)
+image_data = getReducedSpectrogram(beforeImgFilename, specWidth, specHeight, timeBucketWidth, frequencyBucketHeight)
+
 
 #print(str(image_data.shape) + ' -> ' + str(image_data))
 
@@ -145,9 +164,15 @@ result = normalizeForWav(samples, 0.1)
 print(str(result.shape) + ' -> ' + str(result))
 
 
-wavRelativeDir = 'wav'
+#filename = os.path.join(wavRelativeDir, 'clean_' + str(timeBuckets) + '_' + str(frequencyBuckets) + '.wav')
+wf.write(afterWavFilename, samplesPerSecond, result)
+print('Wrote ' + afterWavFilename)
 
-filename = os.path.join(wavRelativeDir, 'clean_' + str(timeBuckets) + '_' + str(frequencyBuckets) + '.wav')
-wf.write(filename, samplesPerSecond, result)
-print('Wrote ' + filename)
+
+
+afterCommand = 'sox ' + afterWavFilename + ' -n rate ' + str(soxRate) + ' spectrogram -m -r -X ' + str(xAxisPixelsPerSecond) + ' -y ' + str(yAxisPixels) + ' -z ' + str(zAxisDbRange) + ' -o ' + afterImgFilename
+print(afterCommand)
+
+subprocess.Popen(afterCommand, shell=True, stdout=subprocess.PIPE)
+print('Wrote ' + afterImgFilename)
 
