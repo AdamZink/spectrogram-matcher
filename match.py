@@ -17,8 +17,8 @@ maxSpecFrequency = int(soxRate / 2.0)
 # sox: range 1 - 5000
 xAxisPixelsPerSecond = 360
 
-# sox: power of 2, plus 1
-yAxisPixels = (2**9) + 1
+# sox: power of 2, plus 1 (between 64 and 1200 -> between 2**6 and 2**10)
+yAxisPixels = (2**10) + 1
 
 #sox: range 20 - 180 (keep as multiple of 10 for simplicity)
 zMultipleOfTen = 8
@@ -44,8 +44,10 @@ afterImgFilename = os.path.join(imgRelativeDir, 'after_spectrogram.png')
 beforeCommand = 'sox ' + beforeWavFilename + ' -n rate ' + str(soxRate) + ' spectrogram -m -r -X ' + str(xAxisPixelsPerSecond) + ' -y ' + str(yAxisPixels) + ' -z ' + str(zAxisDbRange) + ' -o ' + beforeImgFilename
 print(beforeCommand)
 
-subprocess.Popen(beforeCommand, shell=True, stdout=subprocess.PIPE)
+beforeProcess = subprocess.Popen(beforeCommand, shell=True, stdout=subprocess.PIPE)
+beforeProcess.wait()
 print('Wrote ' + beforeImgFilename)
+
 
 
 
@@ -107,7 +109,7 @@ def isMusicalFrequencyBucket(lowerFrequency, upperFrequency):
 		493.88,
 		523.25
 	]
-	numOvertones = 5
+	numOvertones = 10
 	musicalFrequencies = fundamentalFrequencies
 	for i in range(0, numOvertones):
 		musicalFrequencies += [x*(i+2) for x in fundamentalFrequencies]
@@ -173,6 +175,7 @@ print('Wrote ' + afterWavFilename)
 afterCommand = 'sox ' + afterWavFilename + ' -n rate ' + str(soxRate) + ' spectrogram -m -r -X ' + str(xAxisPixelsPerSecond) + ' -y ' + str(yAxisPixels) + ' -z ' + str(zAxisDbRange) + ' -o ' + afterImgFilename
 print(afterCommand)
 
-subprocess.Popen(afterCommand, shell=True, stdout=subprocess.PIPE)
+afterProcess = subprocess.Popen(afterCommand, shell=True, stdout=subprocess.PIPE)
+afterProcess.wait()
 print('Wrote ' + afterImgFilename)
 
