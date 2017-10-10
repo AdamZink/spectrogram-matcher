@@ -51,7 +51,7 @@ print('Wrote ' + beforeImgFilename)
 
 
 
-timeBuckets = 1 #int(specWidth)
+timeBuckets = 2 #int(specWidth)
 frequencyBuckets = int(specHeight)
 
 if (timeBuckets == 0 or specWidth % timeBuckets != 0):
@@ -125,6 +125,15 @@ def getMusicalFrequency(lowerFrequency, upperFrequency):
 
 def getSamples(amplitudeData, amplitudeValuesPerSecond, durationInSeconds, maxFrequency):
 	frequencyBuckets, timeBuckets = amplitudeData.shape
+	
+	timeSplits = np.linspace(0, specDurationInSeconds, timeBuckets + 1)
+	timeBucketLowerBounds = timeSplits[:-1]
+	timeBucketUpperBounds = timeSplits[1:]
+	timeBucketTuples = list(zip(timeBucketLowerBounds, timeBucketUpperBounds))
+	
+	print(timeBucketTuples)
+	
+	
 	
 	frequencySplits = np.linspace(0, maxFrequency, frequencyBuckets + 1)
 	frequencyBucketLowerBounds = frequencySplits[:-1]
