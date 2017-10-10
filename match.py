@@ -75,7 +75,7 @@ def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSec
 	
 	# convert decibel values to linear scale
 	# use 0 as linear value if spectrogram is black
-	imgRelativeLoudness = np.where(imgLog == 0, 0, 2.0 ** ((imgLog - 1.0) * zMultipleOfTen))
+	imgRelativeLoudness = np.where(imgLog == 0, 0, 3.5 ** ((imgLog - 1.0) * zMultipleOfTen))
 	#print(str(imgLinear.shape) + ' -> ' + str(imgLinear))
 	
 	if(imgSectionWidth == 1 and imgSectionHeight == 1):
@@ -98,23 +98,29 @@ image_data = getReducedSpectrogram(beforeImgFilename, specWidth, specHeight, tim
 samplesPerSecond = 44100
 
 
-def isMusicalFrequencyBucket(lowerFrequency, upperFrequency):
+def getMusicalFrequency(lowerFrequency, upperFrequency):
 	fundamentalFrequencies = [
-		261.63,
-		293.66,
-		329.63,
-		349.23,
+		#261.63,
+		#293.66,
+		#329.63,
+		#349.23,
 		392,
 		440,
-		493.88,
-		523.25
+		#493.88,
+		#523.25
 	]
 	numOvertones = 10
 	musicalFrequencies = fundamentalFrequencies
 	for i in range(0, numOvertones):
 		musicalFrequencies += [x*(i+2) for x in fundamentalFrequencies]
 	
-	return len([f for f in musicalFrequencies if f >= lowerFrequency and f < upperFrequency]) > 0
+	frequenciesInRange = [f for f in musicalFrequencies if f >= lowerFrequency and f < upperFrequency]
+	
+	if len(frequenciesInRange) > 0:
+		return frequenciesInRange[0]
+		
+	return 0
+	#return len([f for f in musicalFrequencies if f >= lowerFrequency and f < upperFrequency]) > 0
 	
 
 def getSamples(amplitudeData, amplitudeValuesPerSecond, durationInSeconds, maxFrequency):
@@ -134,17 +140,20 @@ def getSamples(amplitudeData, amplitudeValuesPerSecond, durationInSeconds, maxFr
 	amplitudeIndex = 0
 	for lowerFrequency, upperFrequency in frequencyBucketTuples:
 	
+		frequency = getMusicalFrequency(lowerFrequency, upperFrequency)
 	
 		amplitude = 0
-		if(isMusicalFrequencyBucket(lowerFrequency, upperFrequency)):
+		if(frequency > 0):
 			amplitude = amplitudeData[amplitudeIndex][0]
+			if(amplitude > 0):
+				print(frequency)
 		#randomPhaseShift = random.random() * 10000.0  # better way to do this?
 		
-		midpointFrequency = (lowerFrequency + upperFrequency) / 2.0
+		#midpointFrequency = (lowerFrequency + upperFrequency) / 2.0
 		
 		# frequencyData = amplitude * sin( frequency * time + phase shift )
 		#frequencyData = amplitudeData[amplitudeIndex][0] * np.sin((2.0 * np.pi * t * ((1.0 * frequency) / samplesPerSecond)) + randomPhaseShift)
-		frequencyData = amplitude * np.sin(2.0 * np.pi * t * ((1.0 * midpointFrequency) / samplesPerSecond))
+		frequencyData = amplitude * np.sin(2.0 * np.pi * t * ((1.0 * frequency) / samplesPerSecond))
 		
 		sampleData = np.add(sampleData, frequencyData)
 		
