@@ -28,13 +28,13 @@ zAxisDbRange = 10 * zMultipleOfTen
 specWidth = xAxisPixelsPerSecond
 specHeight = yAxisPixels - 1  # will delete top row of data later so height is evenly divisible by 2
 
-specDurationInSeconds = 1.0
+specDurationInSeconds = 2.0
 
 
 wavRelativeDir = 'wav'
 imgRelativeDir = os.path.join('img', 'compare')
 
-beforeWavFilename = os.path.join(wavRelativeDir, 'sin_G4.wav')
+beforeWavFilename = os.path.join(wavRelativeDir, 'sin_F4_G4.wav')
 
 beforeImgFilename = os.path.join(imgRelativeDir, 'before_spectrogram.png')
 afterWavFilename = os.path.join(wavRelativeDir, 'after.wav')
@@ -51,8 +51,8 @@ print('Wrote ' + beforeImgFilename)
 
 
 
-timeBuckets = 1 #int(specWidth)
-frequencyBuckets = int(specHeight)
+timeBuckets = 6 #int(specWidth)
+frequencyBuckets = int(specHeight / 16)
 
 if (timeBuckets == 0 or specWidth % timeBuckets != 0):
 	sys.exit('ERROR - timeBuckets is not valid for specWidth')
@@ -60,7 +60,7 @@ if (timeBuckets == 0 or specWidth % timeBuckets != 0):
 if (frequencyBuckets == 0 or specHeight % frequencyBuckets != 0):
 	sys.exit('ERROR - frequencyBuckets is not valid for specHeight')
 	
-timeBucketWidth = int(specWidth / timeBuckets)
+timeBucketWidth = int((specWidth*specDurationInSeconds) / timeBuckets)
 frequencyBucketHeight = int(specHeight / frequencyBuckets)
 
 
@@ -75,13 +75,18 @@ def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSec
 	
 	# convert decibel values to linear scale
 	# use 0 as linear value if spectrogram is black
-	imgRelativeLoudness = np.where(imgLog == 0, 0, 2.0 ** ((imgLog - 1.0) * zMultipleOfTen))
+	imgRelativeLoudness = np.where(imgLog == 0, 0, 3.5 ** ((imgLog - 1.0) * zMultipleOfTen))
 	#print(str(imgLinear.shape) + ' -> ' + str(imgLinear))
 	
 	if(imgSectionWidth == 1 and imgSectionHeight == 1):
 		return imgRelativeLoudness
 		
 	else:
+		print(imgHeight)
+		print(imgSectionHeight)
+		print(imgWidth)
+		print(imgSectionWidth)
+		
 		imgReshape = imgRelativeLoudness.reshape(int(imgHeight / imgSectionHeight), imgSectionHeight, int(imgWidth / imgSectionWidth), imgSectionWidth).mean(axis=3).mean(axis=1)
 		#print(str(imgReshape.shape) + ' -> ' + str(imgReshape))
 
@@ -90,7 +95,7 @@ def getReducedSpectrogram(filename, imgWidth, imgHeight, imgSectionWidth, imgSec
 
 # Get data for 1 image
 #image_data = getReducedSpectrogram(os.path.join(os.getcwd(), 'img', 'input', image_filename), specWidth, specHeight, timeBucketWidth, frequencyBucketHeight)
-image_data = getReducedSpectrogram(beforeImgFilename, specWidth, specHeight, timeBucketWidth, frequencyBucketHeight)
+image_data = getReducedSpectrogram(beforeImgFilename, int(specWidth*specDurationInSeconds), specHeight, timeBucketWidth, frequencyBucketHeight)
 
 
 #print(str(image_data.shape) + ' -> ' + str(image_data))
@@ -98,57 +103,85 @@ image_data = getReducedSpectrogram(beforeImgFilename, specWidth, specHeight, tim
 samplesPerSecond = 44100
 
 
-def isMusicalFrequencyBucket(lowerFrequency, upperFrequency):
+def getMusicalFrequency(lowerFrequency, upperFrequency):
 	fundamentalFrequencies = [
-		261.63,
-		293.66,
-		329.63,
+		#261.63,
+		#293.66,
+		#329.63,
 		349.23,
-		392,
-		440,
-		493.88,
-		523.25
+		392
+		#440,
+		#493.88,
+		#523.25
 	]
 	numOvertones = 10
 	musicalFrequencies = fundamentalFrequencies
 	for i in range(0, numOvertones):
 		musicalFrequencies += [x*(i+2) for x in fundamentalFrequencies]
 	
-	return len([f for f in musicalFrequencies if f >= lowerFrequency and f < upperFrequency]) > 0
+	frequenciesInRange = [f for f in musicalFrequencies if f >= lowerFrequency and f < upperFrequency]
+	
+	if len(frequenciesInRange) > 0:
+		return frequenciesInRange[0]
+		
+	return 0
+	#return len([f for f in musicalFrequencies if f >= lowerFrequency and f < upperFrequency]) > 0
 	
 
 def getSamples(amplitudeData, amplitudeValuesPerSecond, durationInSeconds, maxFrequency):
 	frequencyBuckets, timeBuckets = amplitudeData.shape
 	
-	frequencySplits = np.linspace(0, maxFrequency, frequencyBuckets + 1)
-	frequencyBucketLowerBounds = frequencySplits[:-1]
-	frequencyBucketUpperBounds = frequencySplits[1:]
-	frequencyBucketTuples = list(zip(np.flip(frequencyBucketLowerBounds, axis=0), np.flip(frequencyBucketUpperBounds, axis=0)))
+	timeSplits = np.linspace(0, specDurationInSeconds, timeBuckets + 1)
+	timeBucketLowerBounds = timeSplits[:-1]
+	timeBucketUpperBounds = timeSplits[1:]
+	timeBucketTuples = list(zip(timeBucketLowerBounds, timeBucketUpperBounds))
 	
-	#print(frequencyBucketTuples)
+	print(timeBucketTuples)
 	
 	t = np.arange(durationInSeconds * samplesPerSecond)
 	
-	sampleData = np.sin(2.0 * np.pi * t * ((1.0 * 0) / samplesPerSecond))
+	sampleData = np.array([])
 
-	amplitudeIndex = 0
-	for lowerFrequency, upperFrequency in frequencyBucketTuples:
+	amplitudeTimeIndex = 0
+	for startTime, endTime in timeBucketTuples:
 	
+		tBucket = np.arange((endTime - startTime) * samplesPerSecond)
+		
+		timeBucketData = np.sin(2.0 * np.pi * tBucket * ((1.0 * 0) / samplesPerSecond))
 	
-		amplitude = 0
-		if(isMusicalFrequencyBucket(lowerFrequency, upperFrequency)):
-			amplitude = amplitudeData[amplitudeIndex][0]
-		#randomPhaseShift = random.random() * 10000.0  # better way to do this?
+		frequencySplits = np.linspace(0, maxFrequency, frequencyBuckets + 1)
+		frequencyBucketLowerBounds = frequencySplits[:-1]
+		frequencyBucketUpperBounds = frequencySplits[1:]
+		frequencyBucketTuples = list(zip(np.flip(frequencyBucketLowerBounds, axis=0), np.flip(frequencyBucketUpperBounds, axis=0)))
 		
-		midpointFrequency = (lowerFrequency + upperFrequency) / 2.0
+		#print(frequencyBucketTuples)
 		
-		# frequencyData = amplitude * sin( frequency * time + phase shift )
-		#frequencyData = amplitudeData[amplitudeIndex][0] * np.sin((2.0 * np.pi * t * ((1.0 * frequency) / samplesPerSecond)) + randomPhaseShift)
-		frequencyData = amplitude * np.sin(2.0 * np.pi * t * ((1.0 * midpointFrequency) / samplesPerSecond))
+		amplitudeFrequencyIndex = 0
+		for lowerFrequency, upperFrequency in frequencyBucketTuples:
 		
-		sampleData = np.add(sampleData, frequencyData)
+			frequency = getMusicalFrequency(lowerFrequency, upperFrequency)
 		
-		amplitudeIndex += 1
+			amplitude = 0
+			if(frequency > 0):
+				amplitude = amplitudeData[amplitudeFrequencyIndex][amplitudeTimeIndex]
+				if(amplitude > 0):
+					print(frequency)
+			#randomPhaseShift = random.random() * 10000.0  # better way to do this?
+			
+			#midpointFrequency = (lowerFrequency + upperFrequency) / 2.0
+			
+			# frequencyData = amplitude * sin( frequency * time + phase shift )
+			frequencyData = amplitude * np.sin(2.0 * np.pi * tBucket * ((1.0 * frequency) / samplesPerSecond))
+			
+			timeBucketData = np.add(timeBucketData, frequencyData)
+			
+			amplitudeFrequencyIndex += 1
+			
+		print(timeBucketData)
+		
+		sampleData = np.concatenate((sampleData, timeBucketData), axis=0)
+		
+		amplitudeTimeIndex += 1
 		
 	return sampleData
 	
